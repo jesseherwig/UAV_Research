@@ -13,6 +13,7 @@ is_deck_attached = False
 DEFAULT_HEIGHT = 0.5
 
 camera_width = 640
+camera_height = 480
 
 def simple_connect():
     print("Connected")
@@ -59,11 +60,17 @@ def calculate_marker_pos(corners, ids):
 
 def find_target(scf, vid):
     target_found = False
+    centered_yaw = False
+    centered_z = False
+    centered_x = False
+    
     lastFound = 0
     arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_250)
     arucoParams = cv2.aruco.DetectorParameters_create()
     with MotionCommander(scf, default_height=DEFAULT_HEIGHT) as mc:
-        mc.start_turn_left(15)
+        xvelocity = 0.0
+        zvelocity = 0.0
+        yaw = -15
         print('start search')
         while(not target_found):
             ret, frame = vid.read()
@@ -78,64 +85,54 @@ def find_target(scf, vid):
                 lastFound = 0
                 print('Detected marker')
                 if corners[0][0][0][0] > (camera_width / 2) - 10:
-                    print('overshot')
-                    mc.stop()
-                    mc.start_turn_right(15)
+                    print('Left Overshoot - Turning Right')
+                    yaw = 15
                 elif corners[0][0][1][0] < (camera_width / 2) + 10:
-                    print('other overshoot')
-                    mc.stop()
-                    mc.start_turn_left(15)
+                    print('Right Overshoot - Turning Left')
+                    yaw = -15
+                    centered_yaw = False
                 else:
-                    print('centred')
-                    mc.stop()
+                    print('centred in yaw')
+                    yaw = 0.0
+                    centered_yaw = True
+                if corners[0][0][0][0] > (camera_height / 2) :
+                    print('Bottom Overshoot - Moving UP')
+                    zvelocity = 0.3
+                    centered_z = False
+                elif corners[0][0][2][0] < (camera_height / 2) :
+                    print('Top Overshoot - Moving DOWN')
+                    zvelocity = -0.3
+                    centered_z = False
+                else:
+                    print('centred in z')
+                    zvelocity = 0.0
+                    centered_z = True
+                if centered_yaw and centered_z :
                     if corners[0][0][1][0] - corners[0][0][0][0] < 50:
                         print('Moving Closer')
-                        mc.start_forward(0.5)
+                        xvelocity = 0.5
                     elif corners[0][0][1][0] - corners[0][0][0][0] > 50:
                         print('Backing Up')
-                        mc.start_back(0.1)
+                        xvelocity = -0.5
                     else:
-                        mc.stop()
+                        xvelocity = 0.0
                         print('Optimal distance')
                         target_found = True
+                else:
+                    xvelocity = 0.0
             else:
                 lastFound += 1
 
             if lastFound > 50:
                 print('Target Lost')
-                mc.start_turn_left(15)
+                xvelocity = 0.0
+                zvelocity = 0.0
+                yaw = -15
+
+            mc._set_vel_setpoint(xvelocity, 0.0, zvelocity, yaw)
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
-
-            # if len(corners) > 0:
-            #     print("Detected Marker")
-            #     # flatten the ArUco IDs list
-            #     ids = ids.flatten()
-            #     if 1 in ids:
-            #         index = ids.index(1)
-            #         target = corners[index]
-            #         if target[1][1] < (camerawidth/2 + 10):
-            #             print('Overshot')
-            #             mc.start_turn_right(rate=0.1)
-            #
-            #     cv2.imshow('frame', frame)
-                # loop over the detected ArUCo corners
-                # for (markerCorner, markerID) in zip(corners, ids):
-                #     # extract the marker corners (which are always returned in
-                #     # top-left, top-right, bottom-right, and bottom-left order)
-                #     corners = markerCorner.reshape((4, 2))
-                #     (topLeft, topRight, bottomRight, bottomLeft) = corners
-                #     # convert each of the (x, y)-coordinate pairs to integers
-                #     topRight = (int(topRight[0]), int(topRight[1]))
-                #     bottomRight = (int(bottomRight[0]), int(bottomRight[1]))
-                #     bottomLeft = (int(bottomLeft[0]), int(bottomLeft[1]))
-                #     topLeft = (int(topLeft[0]), int(topLeft[0]))
-
-
-
-
-
 
 
 if __name__ == '__main__':
