@@ -87,6 +87,7 @@ def find_target(scf, vid):
                 if corners[0][0][0][0] > (camera_width / 2) - 10:
                     print('Left Overshoot - Turning Right')
                     yaw = 15
+                    centered_yaw = False
                 elif corners[0][0][1][0] < (camera_width / 2) + 10:
                     print('Right Overshoot - Turning Left')
                     yaw = -15
@@ -95,19 +96,21 @@ def find_target(scf, vid):
                     print('centred in yaw')
                     yaw = 0.0
                     centered_yaw = True
-                if corners[0][0][0][0] > (camera_height / 2) :
+                if corners[0][0][0][1] < (camera_height / 2) + 10:
                     print('Bottom Overshoot - Moving UP')
-                    zvelocity = 0.3
+                    zvelocity = 0.05
                     centered_z = False
-                elif corners[0][0][2][0] < (camera_height / 2) :
+                elif corners[0][0][2][1] > (camera_height / 2) - 10:
                     print('Top Overshoot - Moving DOWN')
-                    zvelocity = -0.3
+                    zvelocity = -0.05
                     centered_z = False
                 else:
                     print('centred in z')
                     zvelocity = 0.0
                     centered_z = True
-                if centered_yaw and centered_z :
+                if centered_yaw and centered_z:
+                    zvelocity = 0.0
+                    yaw = 0.0
                     if corners[0][0][1][0] - corners[0][0][0][0] < 50:
                         print('Moving Closer')
                         xvelocity = 0.5
@@ -129,9 +132,10 @@ def find_target(scf, vid):
                 zvelocity = 0.0
                 yaw = -15
 
-            mc._set_vel_setpoint(xvelocity, 0.0, zvelocity, yaw)
+            mc._set_vel_setpoint(xvelocity, 0.0, zvelocity, 0.0)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
+                mc.stop()
                 break
 
 
@@ -148,6 +152,7 @@ if __name__ == '__main__':
         time.sleep(1)
         #simple_connect()
         #move_lin_simp(scf)
+        #take_off_simple(scf)
         #test_flight(scf)
         find_target(scf, cap)
 
